@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_my_favorites"
+            android:title="Мое избранное" />
+        <item
+            android:id="@+id/nav_all_tracks"
+            android:title="Все треки" />
+        <item
+            android:id="@+id/nav_add_track"
+            android:title="Добавить трек" />
+    </group>
+</menu>
