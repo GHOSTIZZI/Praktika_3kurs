@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.appcompat.widget.SearchView; // ✅ НОВЫЙ ИМПОРТ
+import androidx.appcompat.widget.SearchView;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -27,7 +27,7 @@ import com.example.myapplication.util.PlaybackManager;
 import com.google.android.material.navigation.NavigationView;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale; // ✅ НОВЫЙ ИМПОРТ для поиска
+import java.util.Locale;
 import retrofit2.*;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -37,13 +37,13 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
 
     private DrawerLayout drawerLayout;
     private RecyclerView trackRecyclerView;
-    private SearchView trackSearchView; // ✅ НОВАЯ ПЕРЕМЕННАЯ
+    private SearchView trackSearchView;
     private SupabaseMusicApi musicApi;
     private TrackAdapter adapter;
     private int currentUserId;
     private boolean showingFavorites = false;
     private List<Track> currentTracks = new ArrayList<>();
-    private List<Track> fullTracksList = new ArrayList<>(); // ✅ НОВОЕ: Полный список для поиска
+    private List<Track> fullTracksList = new ArrayList<>();
 
     private PlaybackManager playbackManager;
 
@@ -69,8 +69,8 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         trackRecyclerView = findViewById(R.id.track_recycler_view);
         trackRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        trackSearchView = findViewById(R.id.track_search_view); // ✅ Инициализация SearchView
-        setupSearchView(); // ✅ Настройка SearchView
+        trackSearchView = findViewById(R.id.track_search_view);
+        setupSearchView();
 
         currentUserId = getIntent().getIntExtra("user_id", -1);
 
@@ -98,7 +98,7 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         loadAllTracks();
     }
 
-    // ----------------------- ЛОГИКА ПОИСКА (НОВАЯ) -----------------------
+    // ----------------------- ЛОГИКА ПОИСКА -----------------------
 
     private void setupSearchView() {
         trackSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -122,7 +122,6 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         List<Track> filteredList = new ArrayList<>();
         String lowerCaseQuery = query.toLowerCase(Locale.ROOT);
 
-        // Используем полный список треков для фильтрации, если мы не в избранном
         List<Track> sourceList = showingFavorites ? currentTracks : fullTracksList;
 
         if (lowerCaseQuery.isEmpty()) {
@@ -136,7 +135,6 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             }
         }
 
-        // Обновляем текущий отображаемый список и адаптер
         currentTracks = filteredList;
         if (adapter != null) {
             adapter.updateData(currentTracks);
@@ -157,9 +155,9 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             loadMyFavorites();
         } else if (id == R.id.nav_all_tracks) {
             loadAllTracks();
-        } else if (id == R.id.nav_add_track) {
-            Toast.makeText(this, "Добавление треков отключено.", Toast.LENGTH_SHORT).show();
         }
+        // ❌ УДАЛЕНА ЛОГИКА ДЛЯ R.id.nav_add_track
+
         drawerLayout.closeDrawers();
         return true;
     }
@@ -170,7 +168,7 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             @Override
             public void onResponse(Call<List<Track>> call, Response<List<Track>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    fullTracksList = response.body(); // Сохраняем полный список
+                    fullTracksList = response.body();
                     currentTracks = new ArrayList<>(fullTracksList);
 
                     if (adapter == null) {
@@ -245,7 +243,6 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
 
         Intent intent = new Intent(HomeActivity.this, PlayerActivity.class);
 
-        // При клике на трек, мы передаем текущий ОТФИЛЬТРОВАННЫЙ список
         intent.putParcelableArrayListExtra("PLAYLIST", (ArrayList<? extends Parcelable>) currentTracks);
         intent.putExtra("START_INDEX", clickedIndex);
         intent.putExtra("USER_ID", currentUserId);
@@ -308,7 +305,6 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 1 && resultCode == RESULT_OK) {
-            // При возвращении из плеера обновляем нужный список
             if (showingFavorites) {
                 loadMyFavorites();
             } else {

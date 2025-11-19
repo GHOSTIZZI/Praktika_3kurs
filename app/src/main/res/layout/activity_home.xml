@@ -26,9 +26,10 @@
             android:id="@+id/track_search_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#222222"
+            android:background="@color/light_background"
             android:iconifiedByDefault="false"
             app:queryHint="Искать по названию или исполнителю"
+            android:theme="@style/ThemeOverlay.AppCompat.Light"
             app:layout_constraintTop_toBottomOf="@id/toolbar"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
@@ -46,7 +47,9 @@
             android:layout_height="0dp"
             android:padding="8dp"
             android:clipToPadding="false"
-            app:layout_constraintTop_toBottomOf="@id/track_search_view"  app:layout_constraintBottom_toTopOf="@id/mini_player_bar_include"
+            android:background="@color/light_background"
+            app:layout_constraintTop_toBottomOf="@id/track_search_view"
+            app:layout_constraintBottom_toTopOf="@id/mini_player_bar_include"
             tools:listitem="@layout/track_item" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

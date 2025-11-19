@@ -1,12 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center_horizontal"
     android:padding="32dp"
-    android:background="#141218"
+    android:background="@color/light_background"
     tools:context=".activity.PlayerActivity">
 
     <ImageView
@@ -36,8 +36,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="28sp"
-                android:textColor="@android:color/white"
                 android:textStyle="bold"
+                android:textColor="@color/dark_text_and_icons"
                 tools:text="Название Песни" />
 
             <TextView
@@ -45,7 +45,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="18sp"
-                android:textColor="#CCCCCC"
+                android:textColor="@color/medium_text"
                 tools:text="Исполнитель" />
         </LinearLayout>
 
@@ -56,9 +56,11 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
+            app:tint="@color/dark_text_and_icons"
             android:src="@drawable/ic_favorite_border"
             android:contentDescription="Добавить в избранное" />
     </RelativeLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -70,7 +72,7 @@
             android:id="@+id/player_current_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#CCCCCC"
+            android:textColor="@color/medium_text"
             android:text="0:00" />
 
         <SeekBar
@@ -79,13 +81,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp" />
+            android:paddingEnd="16dp"
+            />
 
         <TextView
             android:id="@+id/player_total_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#CCCCCC"
+            android:textColor="@color/medium_text"
             android:text="0:00" />
     </LinearLayout>
 
@@ -102,6 +105,7 @@
             android:layout_height="72dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_skip_previous"
+            app:tint="@color/dark_text_and_icons"
             android:contentDescription="Предыдущий трек" />
 
         <ImageButton
@@ -111,6 +115,7 @@
             android:layout_marginHorizontal="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_play_arrow"
+            app:tint="@color/dark_text_and_icons"
             android:contentDescription="Играть/Пауза" />
 
         <ImageButton
@@ -119,6 +124,7 @@
             android:layout_height="72dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_skip_next"
+            app:tint="@color/dark_text_and_icons"
             android:contentDescription="Следующий трек" />
     </LinearLayout>
 
