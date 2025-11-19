@@ -16,7 +16,7 @@ import java.util.List;
 
 public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHolder> {
 
-    private List<Track> tracks; // Убираем final, так как список будет меняться
+    private List<Track> tracks;
     private final OnTrackInteractionListener listener;
     private final boolean showFavorites;
 
@@ -37,7 +37,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
     public void onBindViewHolder(@NonNull TrackViewHolder holder, int position) {
         Track track = tracks.get(position);
 
-        // --- Загрузка обложки ---
         Glide.with(holder.trackCover.getContext())
                 .load(track.getCoverUrl())
                 .placeholder(R.drawable.ic_music_note)
@@ -46,8 +45,16 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         holder.trackTitle.setText(track.getTitle());
         holder.trackArtist.setText(track.getArtist());
 
-        // Кнопка избранного скрыта, т.к. логика перенесена в плеер
-        holder.favoriteButton.setVisibility(View.GONE);
+        // ✅ ЛОГИКА ОТОБРАЖЕНИЯ СЕРДЕЧКА
+        if (track.isFavorite()) {
+            // Если трек избранный, показываем закрашенное сердечко
+            holder.favoriteButton.setImageResource(R.drawable.ic_favorite_filled);
+            holder.favoriteButton.setVisibility(View.VISIBLE);
+        } else {
+            // Если трек не избранный, скрываем сердечко в каталоге
+            holder.favoriteButton.setVisibility(View.GONE);
+        }
+        // Кнопка не имеет слушателя, она используется только как индикатор.
 
         holder.itemView.setOnClickListener(v -> listener.onPlayClick(track));
     }
@@ -57,7 +64,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         return tracks.size();
     }
 
-    // ✅ НОВЫЙ МЕТОД: Обновление данных для поиска
     public void updateData(List<Track> newTracks) {
         this.tracks = newTracks;
         notifyDataSetChanged();

@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText loginInput;
     private EditText passwordInput;
     private Button loginButton;
-    private Button guestButton; // Если вы планируете его использовать
+    // private Button guestButton; // ❌ Удалена ссылка на guestButton
     private TextView registerLink;
 
 
@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         loginInput = findViewById(R.id.login_input);
         passwordInput = findViewById(R.id.password_input);
         loginButton = findViewById(R.id.login_button);
-        guestButton = findViewById(R.id.guest_button); // Если он есть в XML
+        // guestButton = findViewById(R.id.guest_button); // ❌ Удалена инициализация guestButton
         registerLink = findViewById(R.id.register_link);
 
         // Инициализация Retrofit
@@ -59,26 +59,23 @@ public class MainActivity extends AppCompatActivity {
         // Назначение слушателей
         loginButton.setOnClickListener(v -> handleLogin());
 
-        // Если вы используете guestButton, добавьте его слушатель
-        // guestButton.setOnClickListener(v -> handleGuestLogin());
+        // ❌ Удален слушатель гостевого входа (guestButton.setOnClickListener)
 
         registerLink.setOnClickListener(v -> goToRegister());
     }
 
     private void handleLogin() {
-        // 🛑 ИСПРАВЛЕНИЕ: Приводим логин к нижнему регистру для совпадения с БД
+
         String login = loginInput.getText().toString().trim().toLowerCase();
-        String password = passwordInput.getText().toString().trim(); // Пароль остается в исходном регистре
+        String password = passwordInput.getText().toString().trim();
 
         // Проверки на пустоту
         if (login.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Заполните все поля!", Toast.LENGTH_SHORT).show();
             return;
         }
-        // Здесь могут быть дополнительные проверки длины
 
         // 1. Запрос в Supabase: ищем пользователя по логину
-        // 💡 Предполагается, что в SupabaseMusicApi есть getUserByLogin
         musicApi.getUserByLogin("eq." + login).enqueue(new Callback<List<User>>() {
             @Override
             public void onResponse(Call<List<User>> call, Response<List<User>> response) {
@@ -86,9 +83,6 @@ public class MainActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
 
                     User user = response.body().get(0);
-
-                    // 🛑 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРОВЕРКА ПАРОЛЯ В ПРИЛОЖЕНИИ
-                    // Убедитесь, что в User.java есть public String getPassword()
                     String dbPassword = user.getPassword();
 
                     if (dbPassword != null && dbPassword.equals(password)) {
@@ -97,8 +91,10 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, "Добро пожаловать, " + user.getUsername() + "!", Toast.LENGTH_SHORT).show();
 
                         Intent intent = new Intent(MainActivity.this, HomeActivity.class);
-                        // Передаем ID пользователя для дальнейшей работы (например, с избранным)
+                        // Передаем ID пользователя
                         intent.putExtra("user_id", user.getId());
+                        // Передаем логин пользователя для отображения в меню
+                        intent.putExtra("username", user.getUsername());
                         startActivity(intent);
                         finish();
 
@@ -122,14 +118,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Если у вас есть гостевой вход
-    /*
-    private void handleGuestLogin() {
-        Toast.makeText(this, "Вход как гость", Toast.LENGTH_SHORT).show();
-        Intent intent = new Intent(MainActivity.this, GuestViewActivity.class); // Укажите свой класс
-        startActivity(intent);
-    }
-    */
+    // ❌ Удален метод handleGuestLogin
 
     private void goToRegister() {
         Intent intent = new Intent(MainActivity.this, RegisterActivity.class);

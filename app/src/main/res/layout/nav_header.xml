@@ -1,30 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="176dp"
+    android:layout_height="200dp"
     android:background="?attr/colorPrimary"
     android:padding="16dp"
     android:theme="@style/ThemeOverlay.AppCompat.Dark"
     android:orientation="vertical"
     android:gravity="bottom">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Music Application"
-        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_account"
+            android:contentDescription="Иконка аккаунта"
+            app:tint="@android:color/white"
+            android:layout_marginEnd="8dp"/>
+
+        <TextView
+            android:id="@+id/nav_header_username"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Пользователь"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <Button
         android:id="@+id/btn_logout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Выход"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:textColor="@color/white"
+        android:textColor="@android:color/white"
+        android:backgroundTint="?attr/colorPrimaryVariant"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:layout_marginTop="16dp"
         android:minHeight="0dp"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:paddingTop="8dp"/>
+        style="@style/Widget.AppCompat.Button.Borderless.Colored"
+        android:textSize="14sp"/>
+
 </LinearLayout>

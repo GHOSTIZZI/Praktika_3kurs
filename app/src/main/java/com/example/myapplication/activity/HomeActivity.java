@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -26,14 +27,20 @@ import com.example.myapplication.adapter.TrackAdapter.OnTrackInteractionListener
 import com.example.myapplication.util.PlaybackManager;
 import com.google.android.material.navigation.NavigationView;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import retrofit2.*;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class HomeActivity extends AppCompatActivity implements OnTrackInteractionListener {
 
     private static final String TAG = "HomeActivity";
+    private static final int PLAYER_ACTIVITY_REQUEST_CODE = 1;
+
+    // ⚠️ Вставьте ваш реальный URL проекта Supabase здесь!
+    private static final String BASE_URL = "https://xxatkzdplbgnuibdykyd.supabase.co/rest/v1/";
 
     private DrawerLayout drawerLayout;
     private RecyclerView trackRecyclerView;
@@ -41,13 +48,13 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     private SupabaseMusicApi musicApi;
     private TrackAdapter adapter;
     private int currentUserId;
+    private String currentUsername;
+
     private boolean showingFavorites = false;
     private List<Track> currentTracks = new ArrayList<>();
     private List<Track> fullTracksList = new ArrayList<>();
 
     private PlaybackManager playbackManager;
-
-    private static final String BASE_URL = "https://xxatkzdplbgnuibdykyd.supabase.co/rest/v1/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,10 +80,26 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         setupSearchView();
 
         currentUserId = getIntent().getIntExtra("user_id", -1);
+        currentUsername = getIntent().getStringExtra("username");
 
         if (currentUserId == -1) {
             Toast.makeText(this, "Гостевой вход или ошибка ID.", Toast.LENGTH_LONG).show();
+            currentUsername = "Гость";
         }
+
+        // --- УСТАНОВКА ЛОГИНА В NAV HEADER ---
+        View headerView = navigationView.getHeaderView(0);
+        TextView usernameTextView = headerView.findViewById(R.id.nav_header_username);
+        if (usernameTextView != null && currentUsername != null) {
+            usernameTextView.setText(currentUsername);
+        }
+        // ------------------------------------
+
+        Button btnLogout = headerView.findViewById(R.id.btn_logout);
+        if (btnLogout != null) {
+            btnLogout.setOnClickListener(v -> handleLogout());
+        }
+
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
@@ -89,17 +112,10 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
 
         navigationView.setNavigationItemSelectedListener(this::onNavigationItemSelected);
 
-        View headerView = navigationView.getHeaderView(0);
-        Button btnLogout = headerView.findViewById(R.id.btn_logout);
-        if (btnLogout != null) {
-            btnLogout.setOnClickListener(v -> handleLogout());
-        }
-
         loadAllTracks();
     }
 
-    // ----------------------- ЛОГИКА ПОИСКА -----------------------
-
+    // --- ЛОГИКА ПОИСКА ---
     private void setupSearchView() {
         trackSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
@@ -117,16 +133,25 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     }
 
     private void filterTracks(String query) {
-        if (currentTracks == null) return;
+        if (fullTracksList == null) return;
 
         List<Track> filteredList = new ArrayList<>();
         String lowerCaseQuery = query.toLowerCase(Locale.ROOT);
 
-        List<Track> sourceList = showingFavorites ? currentTracks : fullTracksList;
+        // Используем текущий список для фильтрации, чтобы фильтр работал и в "Избранном"
+        List<Track> sourceList = currentTracks;
 
         if (lowerCaseQuery.isEmpty()) {
-            filteredList.addAll(sourceList);
+            if (showingFavorites) {
+                loadMyFavorites(); // Перезагружаем избранное, если запрос пустой
+                return;
+            } else {
+                // В общем каталоге, при пустом запросе, показываем полный список треков
+                checkAndMarkFavorites(fullTracksList);
+                return;
+            }
         } else {
+            // Если есть запрос, фильтруем текущий отображаемый список
             for (Track track : sourceList) {
                 if (track.getTitle().toLowerCase(Locale.ROOT).contains(lowerCaseQuery) ||
                         track.getArtist().toLowerCase(Locale.ROOT).contains(lowerCaseQuery)) {
@@ -142,12 +167,10 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     }
 
 
-    // ----------------------- ЛОГИКА НАВИГАЦИИ И ЗАГРУЗКИ ДАННЫХ -----------------------
-
+    // --- ЛОГИКА НАВИГАЦИИ И ЗАГРУЗКИ ДАННЫХ ---
     private boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
-        // Сброс поиска при смене вкладки
         trackSearchView.setQuery("", false);
         trackSearchView.clearFocus();
 
@@ -156,7 +179,6 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         } else if (id == R.id.nav_all_tracks) {
             loadAllTracks();
         }
-        // ❌ УДАЛЕНА ЛОГИКА ДЛЯ R.id.nav_add_track
 
         drawerLayout.closeDrawers();
         return true;
@@ -164,19 +186,14 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
 
     private void loadAllTracks() {
         showingFavorites = false;
+        // Шаг 1: Загружаем все треки
         musicApi.getAllTracks().enqueue(new Callback<List<Track>>() {
             @Override
             public void onResponse(Call<List<Track>> call, Response<List<Track>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     fullTracksList = response.body();
-                    currentTracks = new ArrayList<>(fullTracksList);
-
-                    if (adapter == null) {
-                        adapter = new TrackAdapter(currentTracks, HomeActivity.this, false);
-                        trackRecyclerView.setAdapter(adapter);
-                    } else {
-                        adapter.updateData(currentTracks);
-                    }
+                    // Шаг 2: Проверяем избранное и обновляем UI
+                    checkAndMarkFavorites(fullTracksList);
                 } else {
                     Toast.makeText(HomeActivity.this, "Ошибка загрузки всех треков: " + response.code(), Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Failed to load all tracks. Code: " + response.code());
@@ -190,6 +207,60 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             }
         });
     }
+
+    /**
+     * Загружает избранные треки пользователя и помечает их в общем списке.
+     */
+    private void checkAndMarkFavorites(List<Track> tracksToMark) {
+        if (currentUserId == -1) {
+            updateTrackListUI(tracksToMark);
+            return;
+        }
+
+        musicApi.getFavoriteTracks("eq." + currentUserId).enqueue(new Callback<List<FavoriteWrapper>>() {
+            @Override
+            public void onResponse(Call<List<FavoriteWrapper>> call, Response<List<FavoriteWrapper>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+
+                    // Используем Set<Integer> для ID треков
+                    Set<Integer> favoriteTrackIds = new HashSet<>();
+                    for (FavoriteWrapper wrapper : response.body()) {
+                        if (wrapper.track != null) {
+                            favoriteTrackIds.add(wrapper.track.getId());
+                        }
+                    }
+
+                    // Обновляем флаг isFavorite в основном списке
+                    for (Track track : tracksToMark) {
+                        track.setFavorite(favoriteTrackIds.contains(track.getId()));
+                    }
+
+                    updateTrackListUI(tracksToMark);
+
+                } else {
+                    Log.e(TAG, "Failed to load favorites for marking. Code: " + response.code());
+                    updateTrackListUI(tracksToMark);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<FavoriteWrapper>> call, Throwable t) {
+                Log.e(TAG, "Network error loading favorites for marking", t);
+                updateTrackListUI(tracksToMark);
+            }
+        });
+    }
+
+    private void updateTrackListUI(List<Track> tracks) {
+        currentTracks = new ArrayList<>(tracks);
+        if (adapter == null) {
+            adapter = new TrackAdapter(currentTracks, HomeActivity.this, false);
+            trackRecyclerView.setAdapter(adapter);
+        } else {
+            adapter.updateData(currentTracks);
+        }
+    }
+
 
     private void loadMyFavorites() {
         if (currentUserId == -1) {
@@ -210,6 +281,8 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
                             favoriteTracks.add(track);
                         }
                     }
+                    // Обновляем fullTracksList, чтобы фильтр работал корректно в "Избранном"
+                    fullTracksList = favoriteTracks;
                     currentTracks = favoriteTracks;
                     if (adapter == null) {
                         adapter = new TrackAdapter(currentTracks, HomeActivity.this, true);
@@ -229,11 +302,11 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         });
     }
 
-    // ----------------------- ОБРАБОТЧИКИ АДАПТЕРА -----------------------
+    // --- ОБРАБОТЧИКИ АДАПТЕРА И ACTIVITY ---
 
     @Override
     public void onFavoriteClick(Track track, int position) {
-        // Логика перенесена в PlayerActivity
+        // Управление избранным теперь происходит только в плеере
     }
 
     @Override
@@ -247,12 +320,10 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         intent.putExtra("START_INDEX", clickedIndex);
         intent.putExtra("USER_ID", currentUserId);
 
-        startActivity(intent);
+        startActivityForResult(intent, PLAYER_ACTIVITY_REQUEST_CODE);
 
         Toast.makeText(this, "Открытие плеера для: " + track.getTitle(), Toast.LENGTH_SHORT).show();
     }
-
-    // ... (handleLogout, addToFavorites, deleteFromFavorites, onActivityResult, onDestroy остаются как есть) ...
 
     private void handleLogout() {
         playbackManager.stop();
@@ -263,51 +334,16 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         finish();
     }
 
-    private void addToFavorites(Track track, int position) {
-        Favorite favorite = new Favorite(currentUserId, track.getId());
-        musicApi.addFavorite(favorite).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.code() == 201) {
-                    track.setFavorite(true);
-                } else {
-                    Log.e(TAG, "Failed to add favorite. Code: " + response.code());
-                }
-            }
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) { /* ... */ }
-        });
-    }
-
-    private void deleteFromFavorites(Track track, int position) {
-        String userIdEq = "eq." + currentUserId;
-        String trackIdEq = "eq." + track.getId();
-
-        musicApi.deleteFavorite(userIdEq, trackIdEq).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    if (showingFavorites) {
-                        adapter.removeTrack(position);
-                    } else {
-                        track.setFavorite(false);
-                    }
-                } else {
-                    Log.e(TAG, "Failed to delete favorite. Code: " + response.code());
-                }
-            }
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) { /* ... */ }
-        });
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1 && resultCode == RESULT_OK) {
+
+        // При возвращении из PlayerActivity, обновляем текущий список
+        if (requestCode == PLAYER_ACTIVITY_REQUEST_CODE) {
             if (showingFavorites) {
                 loadMyFavorites();
             } else {
+                // Если мы в общем каталоге, загружаем и проверяем избранное заново
                 loadAllTracks();
             }
         }
