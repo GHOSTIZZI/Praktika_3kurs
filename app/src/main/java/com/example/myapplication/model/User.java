@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName;
 public class User {
 
     // Поля должны соответствовать вашей таблице Supabase
-    private int id;
+    private Integer id;
 
     @SerializedName("username") // Должно совпадать с именем столбца в Supabase
     private String username;

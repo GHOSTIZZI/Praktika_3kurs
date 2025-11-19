@@ -24,7 +24,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    // 🛑 ИСПРАВЛЕНИЕ: Добавлена переменная для логина
+    private static final String TAG = "RegisterActivity"; // ✅ Для логгирования
+
     private EditText loginInput;
     private EditText passwordInput;
     private Button registerButton;
@@ -37,11 +38,11 @@ public class RegisterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.register_activity);
+        setContentView(R.layout.register_activity); // ✅ Использован согласованный ID макета
 
-        // 🛑 ИСПРАВЛЕНИЕ: Инициализация поля логина
-        loginInput = findViewById(R.id.login_input); // Предполагаемый ID в вашем register_activity.xml
-        passwordInput = findViewById(R.id.password_input);
+        // ✅ Инициализация UI-элементов с правильными ID из последнего согласованного XML:
+        loginInput = findViewById(R.id.register_login_input);
+        passwordInput = findViewById(R.id.register_password_input);
         registerButton = findViewById(R.id.register_button);
         loginLink = findViewById(R.id.login_link);
 
@@ -51,16 +52,16 @@ public class RegisterActivity extends AppCompatActivity {
                 .build();
         musicApi = retrofit.create(SupabaseMusicApi.class);
 
-        registerButton.setOnClickListener(v -> handleRegister());
+        registerButton.setOnClickListener(v -> handleRegistration()); // ✅ Переименован
         loginLink.setOnClickListener(v -> goToLogin());
     }
 
-    private void handleRegister() {
-        // 🛑 ИСПРАВЛЕНИЕ: Получаем логин из loginInput
-        String login = loginInput.getText().toString().trim().toLowerCase();
-        String password = passwordInput.getText().toString().trim(); // Пароль
+    private void handleRegistration() {
 
-        // --- Проверки ---
+        String login = loginInput.getText().toString().trim().toLowerCase();
+        String password = passwordInput.getText().toString().trim();
+
+        // --- Проверки валидации ---
         if (login.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Заполните логин и пароль!", Toast.LENGTH_SHORT).show();
             return;
@@ -73,7 +74,7 @@ public class RegisterActivity extends AppCompatActivity {
             Toast.makeText(this, "Пароль должен быть не менее 8 символов!", Toast.LENGTH_SHORT).show();
             return;
         }
-        // ------------------
+        // --------------------------
 
         // 1. Проверяем, существует ли пользователь с таким логином
         musicApi.getUserByLogin("eq." + login).enqueue(new Callback<List<User>>() {
@@ -84,37 +85,43 @@ public class RegisterActivity extends AppCompatActivity {
                     Toast.makeText(RegisterActivity.this, "Логин уже используется", Toast.LENGTH_SHORT).show();
                 } else {
                     // Логин свободен, регистрируем
-                    User newUser = new User();
-                    newUser.setUsername(login); // Предполагаем, что у вас есть setUsername или setLogin
-                    newUser.setPassword(password); // Устанавливаем пароль
-                    newUser.setRole("user"); // Устанавливаем роль по умолчанию
-
-                    // 2. Создаем нового пользователя
-                    musicApi.createUser(newUser).enqueue(new Callback<Void>() {
-                        @Override
-                        public void onResponse(Call<Void> call, Response<Void> response) {
-                            if (response.code() == 201) {
-                                Toast.makeText(RegisterActivity.this, "Аккаунт создан успешно!", Toast.LENGTH_LONG).show();
-                                startActivity(new Intent(RegisterActivity.this, MainActivity.class));
-                                finish();
-                            } else {
-                                Log.e("REG_ERROR", "Code: " + response.code() + ", Body: " + response.errorBody());
-                                Toast.makeText(RegisterActivity.this, "Ошибка регистрации! Код: " + response.code(), Toast.LENGTH_SHORT).show();
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(Call<Void> call, Throwable t) {
-                            Log.e("REG_ERROR", "Network failure", t);
-                            Toast.makeText(RegisterActivity.this, "Ошибка подключения: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                    registerNewUser(login, password);
                 }
             }
 
             @Override
             public void onFailure(Call<List<User>> call, Throwable t) {
-                Log.e("REG_ERROR", "Network failure (check existence)", t);
+                Log.e(TAG, "Network failure (check existence)", t);
+                Toast.makeText(RegisterActivity.this, "Ошибка подключения: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // ✅ Новый метод для чистоты кода
+    private void registerNewUser(String login, String password) {
+
+        // Создаем объект пользователя с необходимыми данными
+        User newUser = new User();
+        newUser.setUsername(login);
+        newUser.setPassword(password);
+        newUser.setRole("user");
+
+        // 2. Создаем нового пользователя
+        musicApi.createUser(newUser).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.code() == 201) {
+                    Toast.makeText(RegisterActivity.this, "Аккаунт создан успешно!", Toast.LENGTH_LONG).show();
+                    goToLogin();
+                } else {
+                    Log.e(TAG, "Registration failed. Code: " + response.code() + ", Message: " + response.message());
+                    Toast.makeText(RegisterActivity.this, "Ошибка регистрации! Код: " + response.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e(TAG, "Network failure during user creation", t);
                 Toast.makeText(RegisterActivity.this, "Ошибка подключения: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
