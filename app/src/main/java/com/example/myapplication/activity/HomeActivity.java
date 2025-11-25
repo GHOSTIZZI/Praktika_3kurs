@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.RelativeLayout; // 💡 Импортируем RelativeLayout
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -15,11 +16,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.appcompat.widget.SearchView;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.myapplication.R;
 import com.example.myapplication.model.Track;
-import com.example.myapplication.model.Favorite;
 import com.example.myapplication.SupabaseMusicApi;
 import com.example.myapplication.SupabaseMusicApi.FavoriteWrapper;
 import com.example.myapplication.adapter.TrackAdapter;
@@ -50,7 +50,13 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     private int currentUserId;
     private String currentUsername;
 
+    // 💡 Новые поля для управления режимами
+    private RelativeLayout headerContainer;
+    private TextView sectionTitle;
+    private Button btnViewMore;
+    private boolean isDashboardView = true; // Флаг для переключения между дашбордом и полным каталогом
     private boolean showingFavorites = false;
+
     private List<Track> currentTracks = new ArrayList<>();
     private List<Track> fullTracksList = new ArrayList<>();
 
@@ -74,10 +80,16 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         toggle.syncState();
 
         trackRecyclerView = findViewById(R.id.track_recycler_view);
-        trackRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        // Начальный LayoutManager будет установлен в loadDashboardView()
 
         trackSearchView = findViewById(R.id.track_search_view);
         setupSearchView();
+
+        // 💡 Находим новые элементы UI
+        headerContainer = findViewById(R.id.header_container);
+        sectionTitle = findViewById(R.id.tv_section_title);
+        btnViewMore = findViewById(R.id.btn_view_more);
+        btnViewMore.setOnClickListener(v -> loadFullCatalogView()); // Слушатель для кнопки "Еще"
 
         currentUserId = getIntent().getIntExtra("user_id", -1);
         currentUsername = getIntent().getStringExtra("username");
@@ -112,7 +124,8 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
 
         navigationView.setNavigationItemSelectedListener(this::onNavigationItemSelected);
 
-        loadAllTracks();
+        // 💡 Загружаем режим дашборда при запуске
+        loadDashboardView();
     }
 
     // --- ЛОГИКА ПОИСКА ---
@@ -135,23 +148,27 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     private void filterTracks(String query) {
         if (fullTracksList == null) return;
 
+        // Поиск должен работать только в режиме полного каталога или избранного
+        if (isDashboardView) return;
+
         List<Track> filteredList = new ArrayList<>();
         String lowerCaseQuery = query.toLowerCase(Locale.ROOT);
 
-        // Используем текущий список для фильтрации, чтобы фильтр работал и в "Избранном"
-        List<Track> sourceList = currentTracks;
+        // Используем полный список (каталог или избранное) для фильтрации
+        List<Track> sourceList = fullTracksList;
 
         if (lowerCaseQuery.isEmpty()) {
             if (showingFavorites) {
-                loadMyFavorites(); // Перезагружаем избранное, если запрос пустой
+                // Если запрос пустой в Избранном, показываем все избранное
+                loadMyFavorites();
                 return;
             } else {
-                // В общем каталоге, при пустом запросе, показываем полный список треков
+                // Если запрос пустой в Каталоге, показываем весь каталог
                 checkAndMarkFavorites(fullTracksList);
                 return;
             }
         } else {
-            // Если есть запрос, фильтруем текущий отображаемый список
+            // Если есть запрос, фильтруем полный список
             for (Track track : sourceList) {
                 if (track.getTitle().toLowerCase(Locale.ROOT).contains(lowerCaseQuery) ||
                         track.getArtist().toLowerCase(Locale.ROOT).contains(lowerCaseQuery)) {
@@ -160,6 +177,7 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             }
         }
 
+        // Обновляем UI с отфильтрованным списком
         currentTracks = filteredList;
         if (adapter != null) {
             adapter.updateData(currentTracks);
@@ -177,35 +195,110 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         if (id == R.id.nav_my_favorites) {
             loadMyFavorites();
         } else if (id == R.id.nav_all_tracks) {
-            loadAllTracks();
+            // При нажатии в меню, переходим сразу в полный каталог
+            if (fullTracksList.isEmpty()) {
+                // Если данные еще не загружены, загружаем их, а затем показываем полный каталог
+                loadAllTracksAndShowFullCatalog();
+            } else {
+                loadFullCatalogView();
+            }
         }
+
+        // 💡 Здесь можно добавить goToRadioActivity() если он нужен
 
         drawerLayout.closeDrawers();
         return true;
     }
 
-    private void loadAllTracks() {
-        showingFavorites = false;
-        // Шаг 1: Загружаем все треки
+    /**
+     * Загружает все треки и затем отображает полный каталог.
+     * Используется при выборе "Каталог треков" из меню.
+     */
+    private void loadAllTracksAndShowFullCatalog() {
         musicApi.getAllTracks().enqueue(new Callback<List<Track>>() {
             @Override
             public void onResponse(Call<List<Track>> call, Response<List<Track>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     fullTracksList = response.body();
-                    // Шаг 2: Проверяем избранное и обновляем UI
-                    checkAndMarkFavorites(fullTracksList);
+                    loadFullCatalogView();
                 } else {
                     Toast.makeText(HomeActivity.this, "Ошибка загрузки всех треков: " + response.code(), Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Failed to load all tracks. Code: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<List<Track>> call, Throwable t) {
                 Toast.makeText(HomeActivity.this, "Ошибка сети при загрузке всех треков", Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "Network error loading all tracks", t);
             }
         });
+    }
+
+    /**
+     * 💡 Загружает все треки, затем отображает ограниченный дашборд (2 ряда по 4).
+     */
+    private void loadDashboardView() {
+        // Шаг 1: Загружаем все треки
+        musicApi.getAllTracks().enqueue(new Callback<List<Track>>() {
+            @Override
+            public void onResponse(Call<List<Track>> call, Response<List<Track>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    fullTracksList = response.body();
+
+                    // Обновляем UI для режима дашборда
+                    isDashboardView = true;
+                    showingFavorites = false;
+
+                    headerContainer.setVisibility(View.VISIBLE);
+                    sectionTitle.setText("Новые треки");
+                    btnViewMore.setVisibility(View.VISIBLE);
+                    trackSearchView.setVisibility(View.GONE);
+
+                    // Устанавливаем GridLayoutManager (4 столбца)
+                    trackRecyclerView.setLayoutManager(new GridLayoutManager(HomeActivity.this, 4));
+                    // Отключаем прокрутку, чтобы показать только 2 ряда
+                    trackRecyclerView.setNestedScrollingEnabled(false);
+
+                    // Шаг 2: Проверяем избранное и обновляем UI (который ограничит список до 8)
+                    checkAndMarkFavorites(fullTracksList);
+                } else {
+                    Toast.makeText(HomeActivity.this, "Ошибка загрузки треков: " + response.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Track>> call, Throwable t) {
+                Toast.makeText(HomeActivity.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /**
+     * 💡 Переключает на полный, прокручиваемый Grid-вид всего каталога (4 столбца).
+     */
+    private void loadFullCatalogView() {
+        isDashboardView = false;
+        showingFavorites = false;
+
+        // Скрываем элементы дашборда, показываем поиск
+        headerContainer.setVisibility(View.GONE);
+        btnViewMore.setVisibility(View.GONE);
+        trackSearchView.setVisibility(View.VISIBLE);
+
+        // Включаем прокрутку для полного списка
+        trackRecyclerView.setNestedScrollingEnabled(true);
+
+        // Устанавливаем вертикальный Grid Layout для полного каталога (4 столбца)
+        trackRecyclerView.setLayoutManager(new GridLayoutManager(this, 4));
+
+        // Используем полный список и обновляем UI
+        checkAndMarkFavorites(fullTracksList);
+    }
+
+    // Переименованный старый loadAllTracks, который теперь просто заглушка, т.к.
+    // логика загрузки в loadDashboardView и loadAllTracksAndShowFullCatalog
+    private void loadAllTracks() {
+        // Эта функция вызывается в onCreate. Мы просто перенаправляем ее на loadDashboardView
+        loadDashboardView();
     }
 
     /**
@@ -252,9 +345,19 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
     }
 
     private void updateTrackListUI(List<Track> tracks) {
-        currentTracks = new ArrayList<>(tracks);
+
+        List<Track> listToDisplay = new ArrayList<>(tracks);
+
+        // 💡 Если в режиме дашборда, ограничиваем список до 8
+        if (isDashboardView && !listToDisplay.isEmpty()) {
+            listToDisplay = listToDisplay.subList(0, Math.min(8, listToDisplay.size()));
+        }
+
+        currentTracks = listToDisplay; // Обновляем текущий список
+
         if (adapter == null) {
-            adapter = new TrackAdapter(currentTracks, HomeActivity.this, false);
+            // Note: canDeleteFavorite is false, т.к. это общий каталог/дашборд
+            adapter = new TrackAdapter(currentTracks, HomeActivity.this, showingFavorites);
             trackRecyclerView.setAdapter(adapter);
         } else {
             adapter.updateData(currentTracks);
@@ -267,7 +370,20 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
             Toast.makeText(this, "Сначала войдите в аккаунт!", Toast.LENGTH_LONG).show();
             return;
         }
+
+        // 💡 Настройки для режима "Избранное"
+        isDashboardView = false; // Избранное всегда полный список
         showingFavorites = true;
+
+        // Скрываем элементы дашборда, показываем поиск
+        headerContainer.setVisibility(View.GONE);
+        btnViewMore.setVisibility(View.GONE);
+        trackSearchView.setVisibility(View.VISIBLE);
+
+        // Включаем прокрутку для Избранного
+        trackRecyclerView.setNestedScrollingEnabled(true);
+        // Устанавливаем GridLayoutManager (4 столбца)
+        trackRecyclerView.setLayoutManager(new GridLayoutManager(this, 4));
 
         musicApi.getFavoriteTracks("eq." + currentUserId).enqueue(new Callback<List<FavoriteWrapper>>() {
             @Override
@@ -284,7 +400,9 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
                     // Обновляем fullTracksList, чтобы фильтр работал корректно в "Избранном"
                     fullTracksList = favoriteTracks;
                     currentTracks = favoriteTracks;
+
                     if (adapter == null) {
+                        // Note: canDeleteFavorite is true для Избранного
                         adapter = new TrackAdapter(currentTracks, HomeActivity.this, true);
                         trackRecyclerView.setAdapter(adapter);
                     } else {
@@ -314,10 +432,18 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         int clickedIndex = currentTracks.indexOf(track);
         if (clickedIndex == -1) return;
 
+        // В режиме дашборда, если кликнули по ограниченному списку,
+        // нужно передать полный список для воспроизведения!
+        List<Track> playlistToSend = showingFavorites ? fullTracksList : fullTracksList;
+
+        // Находим индекс кликнутого трека в полном списке
+        int fullListIndex = playlistToSend.indexOf(track);
+        if (fullListIndex == -1) fullListIndex = 0;
+
         Intent intent = new Intent(HomeActivity.this, PlayerActivity.class);
 
-        intent.putParcelableArrayListExtra("PLAYLIST", (ArrayList<? extends Parcelable>) currentTracks);
-        intent.putExtra("START_INDEX", clickedIndex);
+        intent.putParcelableArrayListExtra("PLAYLIST", (ArrayList<? extends Parcelable>) playlistToSend);
+        intent.putExtra("START_INDEX", fullListIndex);
         intent.putExtra("USER_ID", currentUserId);
 
         startActivityForResult(intent, PLAYER_ACTIVITY_REQUEST_CODE);
@@ -342,9 +468,12 @@ public class HomeActivity extends AppCompatActivity implements OnTrackInteractio
         if (requestCode == PLAYER_ACTIVITY_REQUEST_CODE) {
             if (showingFavorites) {
                 loadMyFavorites();
+            } else if (!isDashboardView) {
+                // Если мы в полном каталоге, загружаем и проверяем избранное заново
+                loadAllTracksAndShowFullCatalog();
             } else {
-                // Если мы в общем каталоге, загружаем и проверяем избранное заново
-                loadAllTracks();
+                // Если вернулись на дашборд, просто обновляем его
+                loadDashboardView();
             }
         }
     }

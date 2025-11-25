@@ -1,69 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp"
-    android:background="@color/light_background"
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground">
 
-    <ImageView
-        android:id="@+id/track_cover_image"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:scaleType="centerCrop"
-        android:src="@drawable/ic_music_note"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:contentDescription="Обложка трека" />
-
     <LinearLayout
-        android:id="@+id/text_container"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginStart="16dp"
-        app:layout_constraintStart_toEndOf="@id/track_cover_image"
-        app:layout_constraintTop_toTopOf="@id/track_cover_image"
-        app:layout_constraintBottom_toBottomOf="@id/track_cover_image"
-        app:layout_constraintEnd_toStartOf="@+id/track_btn_favorite">
+        android:padding="8dp"
+        android:background="@android:color/white"> <ImageView
+        android:id="@+id/track_cover_image"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="true"
+        android:src="@drawable/ic_music_note"
+        android:contentDescription="Обложка трека"
+        android:layout_marginBottom="8dp"/>
 
         <TextView
             android:id="@+id/track_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="@color/dark_text_and_icons"
-            android:maxLines="1"
+            android:textColor="@android:color/black" android:maxLines="1"
             android:ellipsize="end"
+            android:gravity="center_horizontal"
             tools:text="Название песни" />
 
         <TextView
             android:id="@+id/track_artist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="@color/medium_text"
-            android:maxLines="1"
+            android:textSize="12sp"
+            android:textColor="#333333" android:maxLines="1"
             android:ellipsize="end"
+            android:gravity="center_horizontal"
             tools:text="Исполнитель" />
+
+        <ImageButton
+            android:id="@+id/track_btn_favorite"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="end"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_favorite_border"
+            app:tint="@android:color/black" android:contentDescription="Избранное"
+            android:visibility="gone"
+            android:layout_marginTop="4dp" />
+
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/track_btn_favorite"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_favorite_border"
-        app:tint="@color/dark_text_and_icons" app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:contentDescription="Избранное"
-        android:visibility="gone" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

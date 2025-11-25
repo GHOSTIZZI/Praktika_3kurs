@@ -11,4 +11,5 @@
 
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="track_item_background_dark">#282828</color>
 </resources>
